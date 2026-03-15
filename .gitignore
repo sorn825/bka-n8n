@@ -9,8 +9,8 @@ local-files/excel/*
 traefik_data/*
 !traefik_data/.gitkeep
 
-# Database backups
-backup/
+# Database backups (เก็บแค่ script ไม่เก็บ dump files)
+backup/*.dump
 
 # Claude Code / Playwright MCP artifacts
 .claude/
