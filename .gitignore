@@ -23,3 +23,7 @@ Thumbs.db
 
 # Node
 node_modules/
+
+# Manual
+Manual.md
+assets/
