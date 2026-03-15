@@ -1,8 +1,9 @@
 #!/bin/bash
 # =============================================================================
-# Dump และ encrypt ฐานข้อมูล TIVDB จาก remote server
+# Dump และ encrypt ฐานข้อมูล TIVDB จาก postgres container บนเครื่องนี้
 # Usage: ./backup.sh
-# Output: backup/TIVDB_YYYYMMDD_HHMMSS.dump.enc (encrypted)
+# Output: backup/TIVDB_YYYYMMDD_HHMMSS.dump.enc
+# รันบน Ubuntu server โดยตรง ไม่ใช่จากเครื่อง remote
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -16,15 +17,14 @@ fi
 # shellcheck disable=SC1090
 . "$ENV_FILE"
 
-REMOTE="ubuntu@${SUBDOMAIN}.${DOMAIN_NAME}"
 CONTAINER="postgres"
 DB="TIVDB"
 PG_USER="postgres"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 OUTPUT="$SCRIPT_DIR/TIVDB_${TIMESTAMP}.dump.enc"
 
-echo "Dumping $DB from $REMOTE..."
-ssh "$REMOTE" "docker exec $CONTAINER pg_dump -U $PG_USER -d $DB -Fc" \
+echo "Dumping $DB..."
+docker exec "$CONTAINER" pg_dump -U "$PG_USER" -d "$DB" -Fc \
   | openssl enc -aes-256-cbc -pbkdf2 -pass pass:"$BACKUP_PASSWORD" \
   > "$OUTPUT"
 
