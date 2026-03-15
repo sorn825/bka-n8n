@@ -75,15 +75,7 @@ chmod 777 local-files/excel
 
 > จำเป็นเพื่อให้ n8n container (user `node`) เขียนไฟล์ Excel ได้
 
-### 4. สร้าง external volume สำหรับ TLS certificate
-
-```bash
-docker volume create traefik_letsencrypt_permanent
-```
-
-> ป้องกัน certificate หายเมื่อทำ `docker compose down -v` (Let's Encrypt จำกัด 5 cert ต่อ 7 วัน)
-
-### 5. รัน
+### 4. รัน
 
 ```bash
 docker compose up -d
