@@ -1,0 +1,19 @@
+FROM node:20-alpine
+
+RUN apk add --no-cache python3 py3-pip curl && \
+    pip3 install psycopg2-binary pandas openpyxl numpy --break-system-packages && \
+    npm install -g n8n && \
+    mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node/.n8n
+
+ENV N8N_USER_FOLDER=/home/node/.n8n
+ENV NODE_ENV=production
+
+COPY --chown=node:node entrypoint.sh /home/node/entrypoint.sh
+
+USER node
+WORKDIR /home/node
+
+EXPOSE 5678
+
+CMD ["/bin/sh", "/home/node/entrypoint.sh"]

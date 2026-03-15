@@ -1,0 +1,354 @@
+{
+  "name": "DotProperty",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const domain = \"https://www.dotproperty.co.th\";\nconst baseUrl = \"https://www.dotproperty.co.th\";\nconst source = \"DotProperty\";\nconst selector = 'a[href*=\"/ads/\"][title]';\nconst subSelector = 'section[aria-labelledby^=\"project-name\"],section[aria-labelledby=\"basic-information\"]';\n\nconst page_start = 1;\nconst page_stop = 5;\n\n// --------------------\n// Filters\n// --------------------\nconst regions = [\n  { name: \"กรุงเทพ\", code: \"bangkok\" },\n  { name: \"นนทบุรี\", code: \"nonthaburi\" }\n];\n\nconst propertyTypes = [\n  { name: \"บ้านเดี่ยว\", code: \"houses-for-sale\" },\n  { name: \"ทาวน์เฮ้าส์\", code: \"townhouses-for-sale\" },\n  { name: \"คอนโด\", code: \"condos-for-sale\" },\n  { name: \"ที่ดิน\", code: \"land-for-sale\" }\n];\n\nconst items = [];\n\nfor (const region of regions) {\n  for (const property of propertyTypes) {\n\n    const baseQuery =\n      `${property.code}` +\n      `/${region.code}`;\n\n    for (let page = page_start; page <= page_stop; page++) {\n\n      const pagePart = page === 1\n        ? `/${baseQuery}`\n        : `/${baseQuery}?page=${page}`;\n\n      items.push({\n        url: `${baseUrl}${pagePart}`,\n        selector,\n        source,\n        subSelector,\n        domain\n      });\n    }\n  }\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -64
+      ],
+      "id": "04c9bbc1-bbe4-41fc-a112-c85cce9be715",
+      "name": "Generate Main Page URL List"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        224,
+        -64
+      ],
+      "id": "81c8df2c-2c6a-4481-a2d4-680f82ed4d22",
+      "name": "Loop Over Main Items",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://flaresolverr:3000/v1",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "cmd",
+              "value": "request.get"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "maxTimeout",
+              "value": "60000"
+            },
+            {
+              "name": "selector",
+              "value": "={{ $json.selector }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        480,
+        -48
+      ],
+      "id": "74060b21-dfa5-4611-a47b-3f4b984bbe9e",
+      "name": "Query Main Page",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. ดึงค่า domain จากโหนดต้นทาง\nconst domain = $('Generate Main Page URL List').first().json.domain;\n\n// 2. รวบรวมข้อมูลจากทุก Item\nconst allExtracted = items.flatMap(item => item.json.solution?.extracted_data ?? []);\n\n// 3. ดึง URL ออกจาก HTML และทำ Unique\nconst urls = [...new Set(\n  allExtracted\n    .map(x => {\n      const html = x.html || \"\";\n      const m = html.match(/<a\\s+[^>]*href=\"([^\"]+)\"/i);\n      return m ? m[1] : null;\n    })\n    .filter(Boolean)\n)];\n\n// 4. ตรวจสอบและเติม Domain\nreturn urls.map(rawUrl => {\n  let finalUrl = rawUrl;\n  \n  try {\n    // ใช้ URL constructor: ถ้า rawUrl เป็น path เช่น /ads มันจะเอาไปต่อกับ domain\n    // แต่ถ้า rawUrl เป็น full URL อยู่แล้ว มันจะใช้ค่าเดิมของมันเอง\n    const u = new URL(rawUrl, domain); \n    \n    // จัดการเรื่อง Decode และประกอบ URL กลับเข้าไป\n    finalUrl = u.origin + decodeURIComponent(u.pathname) + u.search;\n  } catch (e) {\n    // กรณีที่ rawUrl หรือ domain มีรูปแบบผิดพลาดจนสร้าง URL object ไม่ได้\n    finalUrl = decodeURIComponent(rawUrl);\n    \n    // ถ้ายังไม่มี http นำหน้า ให้เอา domain แปะเข้าไปแบบ manual\n    if (!finalUrl.startsWith('http')) {\n      const base = domain.endsWith('/') ? domain.slice(0, -1) : domain;\n      const path = finalUrl.startsWith('/') ? finalUrl : '/' + finalUrl;\n      finalUrl = base + path;\n    }\n  }\n\n  return {\n    json: {\n      url: finalUrl,\n      source: $('Generate Main Page URL List').first().json.source,\n      selector: $('Generate Main Page URL List').first().json.subSelector\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -192
+      ],
+      "id": "d158acec-1f34-491a-a8b4-1006bd41e28e",
+      "name": "Extract Sub Page",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://flaresolverr:3000/v1",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "cmd",
+              "value": "request.get"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "maxTimeout",
+              "value": "60000"
+            },
+            {
+              "name": "selector",
+              "value": "={{ $json.selector }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        -176
+      ],
+      "id": "716cf2c7-2d2d-4145-90d2-5d24fdaaab25",
+      "name": "Query Sub Page",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        768,
+        -192
+      ],
+      "id": "64082d59-3034-46c8-ae53-6038514de979",
+      "name": "Loop Over Sub Items",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "BdeWR704G7s1onqF",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/BdeWR704G7s1onqF",
+          "cachedResultName": "Batch Scraper Assistance"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1520,
+        -336
+      ],
+      "id": "2f725d98-a0c1-4493-b8e6-fe29b58c8c24",
+      "name": "Call 'Batch Scraper Assistance'",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1248,
+        -352
+      ],
+      "id": "2159f453-c5c7-4b9f-83e1-509b5d376bb2",
+      "name": "Loop Over Data Set",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. รวบรวมข้อมูลและจัดการ URL ก่อนทำ Filtering\nconst allData = items\n  .map(item => {\n    let rawUrl = item.json.solution?.url || \"\";\n    let decodedUrl = rawUrl;\n\n    if (rawUrl) {\n      try {\n        // ตัด Fragment Identifier (#) ออกก่อน\n        const urlWithoutFragment = rawUrl.split('#')[0];\n        \n        // ลอง parse ด้วย URL object เพื่อจัดการเรื่องการประกอบ origin/path/search\n        const u = new URL(urlWithoutFragment);\n        decodedUrl = u.origin + decodeURIComponent(u.pathname) + u.search;\n      } catch (e) {\n        // กรณีไม่ใช่ Full URL หรือ URL รูปแบบผิด ให้ decode ตรงๆ และตัด # เอง\n        decodedUrl = decodeURIComponent(rawUrl.split('#')[0]);\n      }\n    }\n\n    return {\n      url: decodedUrl,\n      extracted_data: item.json.solution?.extracted_data\n    };\n  })\n  .filter(item => {\n    const data = item.extracted_data;\n    // เงื่อนไขการกรอง: ต้องไม่ null, ไม่ว่าง, และไม่ใช่ Array ว่าง\n    if (data === undefined || data === null) return false;\n    if (typeof data === 'string' && data.trim() === \"\") return false;\n    if (Array.isArray(data) && data.length === 0) return false;\n    // กรองกรณี URL ว่างด้วย (ถ้าจำเป็น)\n    if (!item.url || item.url.trim() === \"\") return false;\n    \n    return true;\n  });\n\n// 2. แบ่งกลุ่ม (Chunking) ละ 20 ตัว\nconst chunkSize = 20;\nconst results = [];\n\nfor (let i = 0; i < allData.length; i += chunkSize) {\n  const chunk = allData.slice(i, i + chunkSize);\n  results.push({\n    json: {\n      data_set: chunk,\n      count: chunk.length,\n      source: $('Generate Main Page URL List').first().json.source\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -352
+      ],
+      "id": "44fb069f-73d4-4ca9-a084-109f0d41b0ca",
+      "name": "Chunk Results"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -64
+      ],
+      "id": "d0cd3d2a-6953-4359-b86d-72bd030347e0",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Generate Main Page URL List": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Main Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Main Items": {
+      "main": [
+        [
+          {
+            "node": "Extract Sub Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Main Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Main Page": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Main Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Sub Page": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Sub Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Sub Page": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Sub Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Sub Items": {
+      "main": [
+        [
+          {
+            "node": "Chunk Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Sub Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Data Set": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Call 'Batch Scraper Assistance'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Batch Scraper Assistance'": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Data Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Results": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Data Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Generate Main Page URL List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "3729d807-0eae-4635-b659-9a2c11a47c0f",
+  "meta": {
+    "instanceId": "0436978c40bf1b2fc7347c80754d68a619bf9de5094cedd05cfb72fe3b5efbcc"
+  },
+  "id": "LQ40iYhsdh5TGE8D",
+  "tags": []
+}

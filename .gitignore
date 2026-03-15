@@ -1,0 +1,24 @@
+# Secrets
+.env
+
+# Generated Excel output files
+local-files/excel/*
+!local-files/excel/.gitkeep
+
+# Traefik TLS certificates (Let's Encrypt)
+traefik_data/*
+!traefik_data/.gitkeep
+
+# Database backups
+backup/
+
+# Claude Code / Playwright MCP artifacts
+.claude/
+.playwright-mcp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/

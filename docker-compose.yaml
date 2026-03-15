@@ -1,0 +1,134 @@
+services:
+
+  traefik:
+    image: "traefik"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 100
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
+      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik_data:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile_n8n
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 100
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n.tls=true
+      - traefik.http.routers.n8n.entrypoints=web,websecure
+      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
+      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
+      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
+      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
+      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
+      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.n8n.headers.STSPreload=true
+      - traefik.http.routers.n8n.middlewares=n8n@docker
+    environment:
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - TZ=${GENERIC_TIMEZONE}
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      - N8N_ALLOW_EXEC=true
+      - NODES_EXCLUDE=[]
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_OWNER_EMAIL=${N8N_OWNER_EMAIL}
+      - N8N_OWNER_PASSWORD=${N8N_OWNER_PASSWORD}
+      - N8N_OWNER_FIRSTNAME=${N8N_OWNER_FIRSTNAME}
+      - N8N_OWNER_LASTNAME=${N8N_OWNER_LASTNAME}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./local-files:/files
+      - ./workflows:/workflows
+      - /var/run/docker.sock:/var/run/docker.sock
+  flaresolverr:
+    build:
+      context: .
+      dockerfile: Dockerfile_flaresolverr
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 100
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-none}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=${GENERIC_TIMEZONE}
+    ports:
+      - "8191:8191"
+      - "3000:3000"
+    restart: always
+
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile_postgres
+    container_name: postgres
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 100
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_OWNER_EMAIL=${N8N_OWNER_EMAIL}
+      - N8N_OWNER_PASSWORD=${N8N_OWNER_PASSWORD}
+      - N8N_OWNER_FIRSTNAME=${N8N_OWNER_FIRSTNAME}
+      - N8N_OWNER_LASTNAME=${N8N_OWNER_LASTNAME}
+      - TZ=${GENERIC_TIMEZONE}
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "TIVDB", "-U", "postgres" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    restart: always
+
+
+volumes:
+  n8n_data:
+  postgres_data:

@@ -1,0 +1,514 @@
+{
+  "name": "Batch Scraper Assistance",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json) }}",
+        "options": {
+          "systemMessage": "=คุณคือผู้ช่วยที่เก่งเรื่องการหาข้อมูลและจัดการข้อมูลอสังหาริมทรัพย์จาก website\nคุณจะได้รับ data_set มาจาก user โดยแต่ละ item ใน data_set จะเป็นข้อมูลของอสังหาแต่ละหลังที่ extract มาจากหน้า web ซึ่งมีจำนวนทั้งหมดตาม count ที่ user ให้มา นำข้อมูลมาจัด format เป็น markdown เพื่อส่งให้ user อ่านง่ายๆ\n\n  -- หัวข้อประกาศ\n  -- แหล่งที่มา: ใช้ source ที่ user ให้มา **อย่าเปลียน source เอง ให้ยึดตามที่ user บอกมา**\n  -- ประเภท: เป็นค่าต่อไปนี้ บ้านเดี่ยว, บ้านแฝด, ทาวน์เฮ้าส์/ทาวน์โฮม (ถ้าเป็น ทาวน์เฮ้าส์ หรือ ทาวน์โฮม ให้ประเภทเขียนว่า ทาวน์เฮ้าส์/ทาวน์โฮม)  , คอนโด, อาคารพาณิชย์/ตึกแถว (ถ้าเป็น อาคารพาณิชย์ หรือ ตึกแถว ให้ประเภทเขียนว่า อาคารพาณิชย์/ตึกแถว) ,ที่ดินเปล่า, อพาร์ทเมนต์/หอพัก (ถ้าเป็น อพาร์ทเมนต์ หรือ หอพัก ให้ประเภทเขียนว่า อพาร์ทเมนต์/หอพัก) , ออฟฟิศ/สำนักงาน (ถ้าเป็น ออฟฟิศ หรือ สำนักงาน ให้ประเภทเขียนว่า ออฟฟิศ/สำนักงาน), โรงงาน/โกดัง (ถ้าเป็น โรงงาน หรือ โกดัง ให้ประเภทเขียนว่า โรงงาน/โกดัง), โรงแรม/รีสอร์ท (ถ้าเป็น โรงแรม หรือ รีสอร์ท ให้ประเภทเขียนว่า โรงแรม/รีสอร์ท)\n  -- สถานะ: เป็น ขาย หรือ เช่า\n  -- ซอย/ถนน: ซอยและ/หรือถนน\n  -- แขวง : แขวง หรือ ตำบล\n  -- เขต: เขต หรือ อำเภอ\n  -- จังหวัด: ชื่อจังหวัด ถ้าเป็น กรุงเทพมหานคร ให้ใช้ กรุงเทพ\n  -- ราคา: เอามาแต่ตัวเลข อย่าใส่หน่วยในคำตอบ\n  -- ขนาดที่ดิน: เป็น ตารางวา ถ้าหน่วยไม่ตรง แปลงคำตอบให้ด้วย เอามาแต่ตัวเลข อย่าใส่หน่วยในคำตอบ\n  -- พื้นที่ใช้สอย: เป็น ตารางเมตร ถ้าหน่วยไม่ตรง แปลงคำตอบให้ด้วย เอามาแต่ตัวเลข อย่าใส่หน่วยในคำตอบ\n  -- ห้องนอน: เป็น จำนวนห้องนอน\n  -- ห้องน้ำ: เป็น จำนวนห้องน้ำ\n  -- ที่จอดรถ: เป็น จำนวนที่จอดรถ\n  -- วันที่ประกาศ: ใช้ format YYYY-MM-DD โดยปีเป็น คริสต์ศักราช\n  -- วันที่บันทึกข้อมูล: นำค่า  {{ $today }} มาเปลี่ยนเป็น format YYYY-MM-DD โดยปีเป็น คริสต์ศักราช\n  -- url: เป็น link ที่ไปดูรายละเอียดของประกาศ ใช้ค่า url ที่อยู่ใน data_set\n  \nโดย ถ้าข้อมูลไหนไม่มี ให้ใส่ N/A\n##และถ้าไม่พบข้อมูลเลย ให้บอกว่า \"ไม่พบข้อมูลเลย\" เท่านั้น"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -144,
+        80
+      ],
+      "id": "d1250350-3be6-41c5-9995-fab6f8c1e4ed",
+      "name": "Get URL",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a21982cf-7a2f-44b9-9c6d-61d80ac1ee09",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "169b5613-38ec-42a7-93d9-b4954be5c2db",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "```python",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            },
+            {
+              "id": "84a37328-be28-4a0a-99f4-15ee4199fdfa",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "ไม่พบข้อมูลเลย",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        80
+      ],
+      "id": "fcd943fc-5b2b-4359-b3a8-ba1583d088a6",
+      "name": "If Output Empty"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{$('When Executed by Another Workflow').first().json}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        64
+      ],
+      "id": "19be258a-2525-4b43-89c0-c2cdfde23944",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        64
+      ],
+      "id": "3b9d6e0f-0fc3-49d0-bfa8-6c822ad97b2d",
+      "name": "Wait",
+      "webhookId": "973d1b81-adf1-4c30-8b35-c22d417036d7"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        352
+      ],
+      "id": "4093bc69-c085-4b06-acfd-66f8da59328c",
+      "name": "Google Gemini Pro Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "QULoClQ8igI4QZse",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        912,
+        336
+      ],
+      "id": "cf99a97e-c182-4399-89b8-b0538efaf6e8",
+      "name": "Google Gemini Flash Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "QULoClQ8igI4QZse",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=นำข้อความด้านล่างไปใส่ postgres โดยใช้ Postgres Tool ทำจนครบทุก record ของประกาศที่เจอ\n\nข้อความ:  \n{{ $json.output }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        976,
+        96
+      ],
+      "id": "f725207c-c11a-4e4a-a31c-220befc14b1f",
+      "name": "Put to Postgres",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "property_listing",
+          "mode": "list",
+          "cachedResultName": "property_listing"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "price": "={{  $fromAI(\"price\", \"ใช้ ราคา จากข้อความ ถ้าเป็น N/A ให้ใช้ค่า null แทน\", \"number\", null) }}",
+            "landsize": "={{  $fromAI(\"landsize\", \"ใช้ ขนาดที่ดิน จากข้อความ ถ้าเป็น N/A ให้ใช้ค่า null แทน\", \"number\", null) }}",
+            "usablearea": "={{  $fromAI(\"useablearea\", \"ใช้ พื้นที่ใช้สอย จากข้อความ ถ้าเป็น N/A ให้ใช้ค่า null แทน\", \"number\", null) }}",
+            "url": "={{  $fromAI(\"url\", \"ใช้ url จากข้อความ\", \"string\", \"N/A\") }}",
+            "topic": "={{  $fromAI(\"topic\", \"ใช้ หัวข้อประกาศ จากข้อความ\", \"string\", \"N/A\") }}",
+            "source": "={{  $fromAI(\"source\", \"ใช้ แหล่งที่มา จากข้อความ\", \"string\", \"N/A\") }}",
+            "type": "={{  $fromAI(\"type\", \"ใช้ ประเภท จากข้อความ\", \"string\", null) }}",
+            "status": "={{  $fromAI(\"status\", \"ใช้ สถานะ จากข้อความ\", \"string\", null) }}",
+            "street": "={{  $fromAI(\"street\", \"ใช้ ซอย/ถนน จากข้อความ\", \"string\", null) }}",
+            "subdistrict": "={{  $fromAI(\"subdistrict\", \"ใช้ แขวง จากข้อความ \", \"string\", null) }}",
+            "district": "={{  $fromAI(\"district\", \"ใช้ เขต จากข้อความ\", \"string\", null) }}",
+            "province": "={{  $fromAI(\"province\", \"ใช้ จังหวัด จากข้อความ\", \"string\", null) }}",
+            "bedcount": "={{  $fromAI(\"bedcount\", \"ใช้ ห้องนอน จากข้อความ ถ้าเป็น N/A ให้ใช้ค่า null แทน\", \"number\", null) }}",
+            "bathroomcount": "={{  $fromAI(\"bathroomcount\", \"ใช้ ห้องน้ำ จากข้อความ ถ้าเป็น N/A ให้ใช้ค่า null แทน\", \"number\", null) }}",
+            "parkingcount": "={{  $fromAI(\"parkingcount\", \"ใช้ ที่จอดรถ จากข้อความ ถ้าเป็น N/A ให้ใช้ค่า null แทน\", \"number\", null) }}",
+            "announceddate": "={{  $fromAI(\"announcedate\", \"ใช้ วันที่ประกาศ จากข้อความ\", \"string\", \"1970-01-01\") }}",
+            "recorddate": "={{  $fromAI(\"recorddate\", \"ใช้ วันที่บันทึกข้อมูล จากข้อความ\", \"string\", null) }}"
+          },
+          "matchingColumns": [
+            "url"
+          ],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "street",
+              "displayName": "street",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "subdistrict",
+              "displayName": "subdistrict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "district",
+              "displayName": "district",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "province",
+              "displayName": "province",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "landsize",
+              "displayName": "landsize",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "usablearea",
+              "displayName": "usablearea",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "bedcount",
+              "displayName": "bedcount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "bathroomcount",
+              "displayName": "bathroomcount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "parkingcount",
+              "displayName": "parkingcount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "announceddate",
+              "displayName": "announceddate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "recorddate",
+              "displayName": "recorddate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1216,
+        336
+      ],
+      "id": "016943a6-d49e-4ff5-8c32-d7c578b731d1",
+      "name": "Postgres Tool",
+      "credentials": {
+        "postgres": {
+          "id": "qxRZFZIeLy82DjD1",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        80
+      ],
+      "id": "5a0c302c-8f98-45b1-aefd-50f5e66881bd",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get URL": {
+      "main": [
+        [
+          {
+            "node": "If Output Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Output Empty": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Put to Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Pro Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Get URL",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Flash Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Put to Postgres",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Put to Postgres": {
+      "main": [
+        []
+      ]
+    },
+    "Postgres Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Put to Postgres",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "9d24f47e-8a3c-4368-9d46-039f2eeb6560",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0436978c40bf1b2fc7347c80754d68a619bf9de5094cedd05cfb72fe3b5efbcc"
+  },
+  "id": "BdeWR704G7s1onqF",
+  "tags": []
+}

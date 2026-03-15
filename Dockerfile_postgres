@@ -1,0 +1,11 @@
+FROM postgres:16
+
+RUN apt-get update && \
+    apt-get install -y locales && \
+    echo "th_TH.UTF-8 UTF-8" >> /etc/locale.gen && \
+    locale-gen && \
+    update-locale
+
+ENV LANG=th_TH.UTF-8
+ENV LANGUAGE=th_TH.UTF-8
+ENV LC_ALL=th_TH.UTF-8

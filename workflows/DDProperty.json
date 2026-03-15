@@ -1,0 +1,135 @@
+{
+  "name": "DDProperty",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const baseUrl = \"https://www.ddproperty.com/รวมประกาศขาย\";\nconst source = \"DDProperty\";\nconst selector = \".search-result-root\";\n\nconst page_start = 1;\nconst page_stop = 5;\n\n// --------------------\n// Filters\n// --------------------\nconst regions = [\n  { name: \"กรุงเทพ\", code: \"TH10\" },\n  { name: \"นนทบุรี\", code: \"TH12\" }\n];\n\nconst propertyTypes = [\n  { group: \"B\", code: \"BUNG\", label: \"บ้านเดี่ยว\" },\n  { group: \"T\", code: \"TOWN\", label: \"ทาวน์เฮ้าส์\" },\n  { group: \"N\", code: \"CONDO\", label: \"คอนโด\" },\n  { group: \"L\", code: \"LAND\", label: \"ที่ดิน\" }\n];\n\nconst items = [];\n\nfor (const region of regions) {\n  for (const property of propertyTypes) {\n\n    const baseQuery =\n      `listingType=sale` +\n      `&propertyTypeGroup=${property.group}` +\n      `&propertyTypeCode=${property.code}` +\n      `&isCommercial=false` +\n      `&regionCode=${region.code}` +\n      `&_freetextDisplay=${region.name}`;\n\n    for (let page = page_start; page <= page_stop; page++) {\n\n      const pagePart = page === 1\n        ? `?${baseQuery}`\n        : `/${page}?${baseQuery}`;\n\n      items.push({\n        url: `${baseUrl}${pagePart}`,\n        selector,\n        source,\n      });\n    }\n  }\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -64
+      ],
+      "id": "666295a3-c549-4d97-97a4-261e621b0828",
+      "name": "Generate Main Page URL List"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        224,
+        -64
+      ],
+      "id": "c657e8b5-d43d-449c-8141-9cf59de433cb",
+      "name": "Loop Over Main Items"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UOpHHhuWnRg1ZJza",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UOpHHhuWnRg1ZJza",
+          "cachedResultName": "Scraper Assistance V2"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        -48
+      ],
+      "id": "dea95e3e-3a6f-44a7-a9d2-4497289d0ba2",
+      "name": "Call 'Scraper Assistance V2'",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -64
+      ],
+      "id": "df1ca651-2be7-4e3e-a52e-0b324fa92b87",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Generate Main Page URL List": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Main Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Main Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Call 'Scraper Assistance V2'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Scraper Assistance V2'": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Main Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Generate Main Page URL List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2ea025aa-b506-4a47-b8d2-d9dea05fd42f",
+  "meta": {
+    "instanceId": "0436978c40bf1b2fc7347c80754d68a619bf9de5094cedd05cfb72fe3b5efbcc"
+  },
+  "id": "rhqyyxz8dxawpURM",
+  "tags": []
+}

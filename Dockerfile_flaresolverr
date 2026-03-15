@@ -1,0 +1,46 @@
+# --------- Stage 1: Builder (เตรียม Node modules ของ wrapper) ---------
+FROM node:18-alpine AS builder
+WORKDIR /build
+COPY ./warpper/package.json .
+# ใช้ cheerio เวอร์ชัน 1.0.0-rc.10
+RUN npm install
+
+# --------- Stage 2: Final (Image จริง) ---------
+FROM ghcr.io/flaresolverr/flaresolverr:latest
+
+# เปลี่ยนเป็น Root
+USER root
+
+# 1. ติดตั้ง Node.js
+RUN apt-get update && apt-get install -y curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
+# 2. เตรียม Wrapper
+WORKDIR /app-wrapper
+COPY ./warpper/package.json .
+COPY ./warpper/wrapper.js .
+COPY --from=builder /build/node_modules ./node_modules
+
+# 3. สร้าง Script รัน
+# แก้ไข: เปลี่ยน /usr/bin/python3 เป็น python -u
+# (-u คือ unbuffered เพื่อให้ log ไหลออกมาทันที)
+RUN echo '#!/bin/bash \n\
+echo "Starting Flaresolverr (Python)..." \n\
+python -u /app/flaresolverr.py & \n\
+\n\
+echo "Waiting for Flaresolverr to warm up..." \n\
+sleep 10 \n\
+\n\
+echo "Starting Wrapper (Node.js)..." \n\
+cd /app-wrapper && node wrapper.js' > /start.sh && chmod +x /start.sh
+
+# Environment Variables
+ENV LOG_LEVEL=info
+ENV PORT=8191
+
+# Expose Ports
+EXPOSE 8191 3000
+
+# รัน Script
+CMD ["/start.sh"]

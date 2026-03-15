@@ -1,0 +1,352 @@
+{
+  "name": "BAM",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const baseUrl = \"https://www.bam.co.th/search?pageSize=24&filter_name=ทั้งหมด\";\nconst source = \"BAM\";\nconst selector = 'div[src*=\"asset-small\"]';\nconst subSelector = 'div.d-flex.flex-column';\nconst realBaseUrl = \"https://www.bam.co.th/propertydetail/\";\n\nconst page_start = 1;\nconst page_stop = 5;\n\n// --------------------\n// Filters\n// --------------------\nconst regions = [\n  { name: \"กรุงเทพมหานคร\"},\n  { name: \"นนทบุรี\"}\n];\n\nconst propertyTypes = [\n  { name: \"ทาวน์เฮ้าส์\"},\n  { name: \"บ้านเดี่ยว\"},\n  { name: \"ที่ดินเปล่า\"},\n  { name: \"ห้องชุดพักอาศัย\"}\n];\n\nconst items = [];\n\nfor (const region of regions) {\n  for (const property of propertyTypes) {\n    for (let page = page_start; page <= page_stop; page++) {\n\n      \n      const suffixUrl =\n      `&province=${region.name}` +\n      `&assetType=${property.name}` +\n      `&pageNumber=${page}`\n      \n      items.push({\n        url: `${baseUrl}${suffixUrl}`,\n        selector,\n        source,\n        subSelector,\n        realBaseUrl\n      });\n      \n    }\n\n  }\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        128
+      ],
+      "id": "904a689d-8cdb-466c-880c-e47e0402522e",
+      "name": "Generate Main Page URL List"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://flaresolverr:3000/v1",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "cmd",
+              "value": "request.get"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "maxTimeout",
+              "value": "60000"
+            },
+            {
+              "name": "selector",
+              "value": "={{ $json.selector }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        144
+      ],
+      "id": "76d01cf0-9135-4928-87ae-69cc3cd6902c",
+      "name": "Query Main Page",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// เปลี่ยนจาก items[0] เป็นการรวบรวมข้อมูลจากทุก Item\nconst allExtracted = items.flatMap(item => item.json.solution?.extracted_data ?? []);\n\nconst urls = [...new Set(\n  allExtracted\n    .map(x => {\n      const html = x.html || \"\";\n      const m = html.match(/-(\\d+)-\\d+\\.jpg/);\n      return m ? $('Generate Main Page URL List').first().json.realBaseUrl + m[1] : null;\n    })\n    .filter(Boolean)\n)];\n\nreturn urls.map(rawUrl => {\n  let decodedUrl = rawUrl;\n  try {\n    const u = new URL(rawUrl);\n    decodedUrl = u.origin + decodeURIComponent(u.pathname) + u.search;\n  } catch (e) {\n    decodedUrl = decodeURIComponent(rawUrl);\n  }\n\n  // ใช้ metadata จากหน้าแรก\n  const firstItem = items[0].json; \n  return {\n    json: {\n      url: decodedUrl,\n      source: $('Generate Main Page URL List').first().json.source,\n      selector: $('Generate Main Page URL List').first().json.subSelector,\n      method: $('Generate Main Page URL List').first().json.method\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ae1c839f-71f7-45a6-b491-2b7fac23284b",
+      "name": "Extract Sub Page",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -224,
+        128
+      ],
+      "id": "d80af228-1dc0-46ad-b01f-0f9b10a3faac",
+      "name": "Loop Over Main Items",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "d9e785d0-7a58-4382-89a9-8166fd76fadf",
+      "name": "Loop Over Sub Items",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://flaresolverr:3000/v1",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "cmd",
+              "value": "request.get"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "maxTimeout",
+              "value": "60000"
+            },
+            {
+              "name": "selector",
+              "value": "={{ $json.selector }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        464,
+        16
+      ],
+      "id": "1f95467f-ce42-4125-bfa5-fd8a57901f95",
+      "name": "Query Sub Page",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. รวบรวมข้อมูลและจัดการ URL ก่อนทำ Filtering\nconst allData = items\n  .map(item => {\n    let rawUrl = item.json.solution?.url || \"\";\n    let decodedUrl = rawUrl;\n\n    if (rawUrl) {\n      try {\n        const urlWithoutFragment = rawUrl.split('#')[0];\n        const u = new URL(urlWithoutFragment);\n        decodedUrl = u.origin + decodeURIComponent(u.pathname) + u.search;\n      } catch (e) {\n        decodedUrl = decodeURIComponent(rawUrl.split('#')[0]);\n      }\n    }\n\n    // --- ส่วนที่ Filter คำที่ต้องการ และจำกัดจำนวนไว้ที่ 3 ตัวแรก ---\n    let rawExtracted = item.json.solution?.extracted_data;\n    let filteredExtracted = [];\n\n    if (Array.isArray(rawExtracted)) {\n      filteredExtracted = rawExtracted\n        .filter(ex => {\n          const htmlText = ex.html || \"\";\n          // กรองเอาเฉพาะที่มีคำที่ต้องการ\n          return htmlText.includes(\"บริษัทขอสงวนสิทธิ์\") || htmlText.includes(\"รายละเอียดทรัพย์\");\n        })\n        .slice(0, 3); // <--- เพิ่มตรงนี้: เอาแค่ 3 ตัวแรกที่ผ่านการกรองแล้ว\n    } else if (typeof rawExtracted === 'object' && rawExtracted !== null) {\n      const htmlText = rawExtracted.html || \"\";\n      if (htmlText.includes(\"บริษัทขอสงวนสิทธิ์\") || htmlText.includes(\"รายละเอียดทรัพย์\")) {\n        filteredExtracted = [rawExtracted];\n      }\n    }\n\n    return {\n      url: decodedUrl,\n      extracted_data: filteredExtracted\n    };\n  })\n  .filter(item => {\n    const data = item.extracted_data;\n    // ถ้าไม่มี html ตัวไหนตรงเงื่อนไขเลย (เหลือ 0 ตัว) ให้ตัด Item นี้ทิ้งทั้งก้อน\n    if (!data || (Array.isArray(data) && data.length === 0)) return false;\n    if (!item.url || item.url.trim() === \"\") return false;\n    return true;\n  });\n\n// 2. แบ่งกลุ่ม (Chunking) ละ 15 ตัว\nconst chunkSize = 15;\nconst results = [];\n\nfor (let i = 0; i < allData.length; i += chunkSize) {\n  const chunk = allData.slice(i, i + chunkSize);\n  results.push({\n    json: {\n      data_set: chunk,\n      count: chunk.length,\n      source: $('Generate Main Page URL List').first().json.source\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -192
+      ],
+      "id": "6a67d3fc-d27c-4ec7-b6a3-3003224a5d66",
+      "name": "Chunk Results and Special Filter"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "BdeWR704G7s1onqF",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/BdeWR704G7s1onqF",
+          "cachedResultName": "Batch Scraper Assistance"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1008,
+        -176
+      ],
+      "id": "08faf947-8cac-4d57-8f54-e9ad545f9edb",
+      "name": "Call 'Batch Scraper Assistance'",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        736,
+        -192
+      ],
+      "id": "b13ca17a-3af3-4776-97b3-a59a082758ec",
+      "name": "Loop Over Data Set",
+      "executeOnce": false
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        128
+      ],
+      "id": "83304778-a1c6-45a8-b792-80bc2ea0c3ab",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Generate Main Page URL List": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Main Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Main Page": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Main Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Sub Page": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Sub Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Main Items": {
+      "main": [
+        [
+          {
+            "node": "Extract Sub Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Main Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Sub Items": {
+      "main": [
+        [
+          {
+            "node": "Chunk Results and Special Filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Sub Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Sub Page": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Sub Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Batch Scraper Assistance'": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Data Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Data Set": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Call 'Batch Scraper Assistance'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Results and Special Filter": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Data Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Generate Main Page URL List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "d14ca913-2396-49c1-92ef-28f56bc717b6",
+  "meta": {
+    "instanceId": "0436978c40bf1b2fc7347c80754d68a619bf9de5094cedd05cfb72fe3b5efbcc"
+  },
+  "id": "LaMVHRBkaBpvbHn5",
+  "tags": []
+}
