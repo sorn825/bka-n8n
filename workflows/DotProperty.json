@@ -201,15 +201,27 @@
       "name": "Chunk Results"
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                2
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
       "position": [
-        -224,
+        -240,
         -64
       ],
-      "id": "d0cd3d2a-6953-4359-b86d-72bd030347e0",
-      "name": "When clicking ‘Execute workflow’"
+      "id": "ecb587c7-3a5a-4403-af4e-15544175f485",
+      "name": "Schedule Trigger"
     }
   ],
   "pinData": {},
@@ -328,7 +340,7 @@
         ]
       ]
     },
-    "When clicking ‘Execute workflow’": {
+    "Schedule Trigger": {
       "main": [
         [
           {
@@ -345,9 +357,9 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "3729d807-0eae-4635-b659-9a2c11a47c0f",
+  "versionId": "f2f2f54b-62d3-4d51-926d-b07802dc54e8",
   "meta": {
-    "instanceId": "0436978c40bf1b2fc7347c80754d68a619bf9de5094cedd05cfb72fe3b5efbcc"
+    "instanceId": "4c264dfe106a5fd71dc8c84cbe6815239f5ccdabe38ec140a9031eb346b7aa66"
   },
   "id": "LQ40iYhsdh5TGE8D",
   "tags": []
