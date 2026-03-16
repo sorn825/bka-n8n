@@ -114,13 +114,7 @@
         352
       ],
       "id": "4093bc69-c085-4b06-acfd-66f8da59328c",
-      "name": "Google Gemini Pro Model",
-      "credentials": {
-        "googlePalmApi": {
-          "id": "QULoClQ8igI4QZse",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
+      "name": "Google Gemini Pro Model"
     },
     {
       "parameters": {
@@ -133,13 +127,7 @@
         336
       ],
       "id": "cf99a97e-c182-4399-89b8-b0538efaf6e8",
-      "name": "Google Gemini Flash Model",
-      "credentials": {
-        "googlePalmApi": {
-          "id": "QULoClQ8igI4QZse",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
+      "name": "Google Gemini Flash Model"
     },
     {
       "parameters": {
